@@ -14,7 +14,6 @@ class Play extends Phaser.Scene{
     }
 
     create(){
-        console.log("we are in the play scene")
 
         //starfield
         this.starfield = this.add.tileSprite(0, 0, 640, 480, 'starfield').setOrigin(0,0);
@@ -76,6 +75,32 @@ class Play extends Phaser.Scene{
             this.add.text(game.config.width/2, game.config.height/2 + 64, 'Press (R) to Restart or <- for Menu', scoreConfig).setOrigin(0.5);
             this.gameOver = true;
         }, null, this);
+
+        //display time
+        let timeConfig = {
+            fontFamily: 'Courier',
+            fontSize: '28px',
+            backgroundColor: '#F3B141',
+            color: '#843605',
+            align: 'center',
+            padding: {
+                top: 5,
+                bottom: 5,
+            },
+            fixedWidth: 150, 
+        };
+        //innitialize time 
+        this.timeRemaining = 60
+        this.timeLeft = this.add.text(borderUISize + borderPadding + 150, borderUISize + borderPadding * 2,"Time:" +  this.timeRemaining, timeConfig);
+
+        // Call updateTimeDisplay every second
+        this.time.addEvent({
+            delay: 1000, 
+            callback: this.updateTimeDisplay,
+            callbackScope: this,
+            loop: true, 
+        });
+
     }
 
     update(){
@@ -109,7 +134,16 @@ class Play extends Phaser.Scene{
             this.p1Rocket.reset();
             this.shipExplode(this.ship01);
         }
+
     }
+
+    updateTimeDisplay() {
+        // Calculate the time
+        this.timeRemaining = Math.ceil((this.clock.delay - this.clock.getElapsed()) / 1000);
+        // Update the time text
+        this.timeLeft.text = "Time:" +this.timeRemaining;
+    }
+    
 
     checkCollision(rocket, ship) {
     
