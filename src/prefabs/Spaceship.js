@@ -3,16 +3,27 @@ class Spaceship extends Phaser.GameObjects.Sprite{
         super(scene, x, y, texture, frame);
         scene.add.existing(this);
         this.points = pointValue;
+        this.ranDirection =  Math.floor(Math.random() * 2) + 1;
         this.moveSpeed = game.settings.spaceshipSpeed;
+        if(this.ranDirection ==1){
+            this.setFlipX(true);
+        }
     }
 
     update(){
-        this.x -= this.moveSpeed;
-    
-        //wrap around
-        if(this.x <= 0 - this.width){
-            this.x = game.config.width;
+        if(this.ranDirection == 1){
+            this.x += this.moveSpeed;
+            if(this.x > game.config.width){
+                this.x = 0;
+            }
+        }else{
+            this.x -= this.moveSpeed;
+            if( this.x <= 0 - this.width){
+                this.x = game.config.width;
+            }
         }
+      
+
     }
     reset(){
         this.x = game.config.width;
