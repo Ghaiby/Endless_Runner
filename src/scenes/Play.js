@@ -10,11 +10,11 @@ class Play extends Phaser.Scene{
         this.load.audio('sfx_start', './assets/gamestart.mp3');
 
         this.load.audio('backgroundMusic', './assets/running_music.mp3');
-        this.load.spritesheet('player', './assets/Player1_spsh.png',{
+        this.load.spritesheet('player', './assets/player1_spsh.png',{
             frameWidth: 104,
             frameHeight: 90,
         })
-        this.load.spritesheet('opp', './assets/Player2_spsh.png',{
+        this.load.spritesheet('opp', './assets/player2_spsh.png',{
             frameWidth: 104,
             frameHeight: 90,
         })
