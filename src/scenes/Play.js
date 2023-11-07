@@ -4,238 +4,167 @@ class Play extends Phaser.Scene{
     }
 
     preload(){
-        //load images and background
-        this.load.image('rocket', './assets/rocket.png');
-        this.load.image('spaceship', './assets/spaceship.png');
-        this.load.image('starfield', './assets/starfield.png');
-        this.load.image('alien', './assets/alien_pix.png');
+        this.load.image('field', './assets/field3.png');
+        this.load.audio('sfx_hit', './assets/hit.mp3');
+        this.load.audio('sfx_over', './assets/gameover.mp3');
+        this.load.audio('sfx_start', './assets/gamestart.mp3');
 
-        // load spritesheet
-        this.load.spritesheet('explosion', './assets/explosion.png', {frameWidth: 64, frameHeight: 32, startFrame: 0, endFrame: 9});
+        this.load.audio('backgroundMusic', './assets/running_music.mp3');
+        this.load.spritesheet('player', './assets/Player1_spsh.png',{
+            frameWidth: 104,
+            frameHeight: 90,
+        })
+        this.load.spritesheet('opp', './assets/Player2_spsh.png',{
+            frameWidth: 104,
+            frameHeight: 90,
+        })
     }
 
     create(){
+        this.sound.play('sfx_start');
+        this.backgroundMusic = this.sound.add('backgroundMusic', { loop: true });
+        this.backgroundMusic.play();
 
-        //starfield
-        this.starfield = this.add.tileSprite(0, 0, 640, 480, 'starfield').setOrigin(0,0);
-        
-        //green Background 
-        this.add.rectangle(0, borderUISize + borderPadding, game.config.width, borderUISize * 2, 0x00FF00).setOrigin(0, 0);
-
-        //white border
-        this.add.rectangle(0, 0, game.config.width, borderUISize, 0xFFFFFF).setOrigin(0, 0);
-        this.add.rectangle(0, game.config.height - borderUISize, game.config.width, borderUISize, 0xFFFFFF).setOrigin(0, 0);
-        this.add.rectangle(0, 0, borderUISize, game.config.height, 0xFFFFFF).setOrigin(0, 0);
-        this.add.rectangle(game.config.width - borderUISize, 0, borderUISize, game.config.height, 0xFFFFFF).setOrigin(0, 0);
-
-        // add rocket (p1)
-        this.p1Rocket = new Rocket(this, game.config.width/2, game.config.height - borderUISize - borderPadding, 'rocket').setOrigin(0.5, 0);
-
-         // add spaceships (x3)
-         this.ship01 = new Spaceship(this, game.config.width + borderUISize*6, borderUISize*4, 'spaceship', 0, 30).setOrigin(0, 0);
-         this.ship02 = new Spaceship(this, game.config.width + borderUISize*3, borderUISize*5 + borderPadding*2, 'spaceship', 0, 20).setOrigin(0,0);
-         this.ship03 = new Spaceship(this, game.config.width, borderUISize*6 + borderPadding*4, 'spaceship', 0, 10).setOrigin(0,0); 
-
-        //add alien 
-        this.alien = new Alien(this, game.config.width, borderUISize*6 + borderPadding*5 + borderPadding*2, 'alien', 0, 50).setOrigin(0,0);
-
-        // define keys
-        keyF = this.input.keyboard.addKey(Phaser.Input.Keyboard.KeyCodes.F);
         keyR = this.input.keyboard.addKey(Phaser.Input.Keyboard.KeyCodes.R);
-        keyLEFT = this.input.keyboard.addKey(Phaser.Input.Keyboard.KeyCodes.LEFT);
-        keyRIGHT = this.input.keyboard.addKey(Phaser.Input.Keyboard.KeyCodes.RIGHT);
 
-    
-        // animation config
-        this.anims.create({
-            key: 'explode',
-            frames: this.anims.generateFrameNumbers('explosion', { start: 0, end: 9, first: 0}),
-            frameRate: 30
+        //gameover flag
+        this.gameover = false
+        // add field
+        this.field = this.add.tileSprite(0, 0, 832, 900, 'field').setOrigin(0,0);
+        this.add.rectangle(0, 0, borderUISize * 2, game.config.height ,0xF0F0F0).setOrigin(0, 0);
+        this.add.rectangle(game.config.width-borderUISize * 2, 0, borderUISize * 2, game.config.height ,0xF0F0F0).setOrigin(0, 0);
+        
+        this.physics.world.setBounds(borderUISize * 2,0,game.config.width-borderUISize * 4,game.config.heigt, true,true);
+
+        this.player = new Player(this, game.config.width/2, game.config.height - game.config.height/7, 'player').setOrigin(0.5, 0);
+        this.physics.world.enable(this.player);
+        this.player.create();
+        this.player.play('run');
+        this.player.body.setCollideWorldBounds(true);
+
+        this.cursors = this.input.keyboard.createCursorKeys();
+
+        this.opps = this.add.group();
+        this.spawnSpeed = 3000;
+        this.numOpps = 8;
+        this.spawnOpps(this.numOpps);
+
+        //spawn again after  3 sec 
+        this.time.addEvent({
+            delay: this.spawnSpeed, 
+            callback: this.spawnOpps,
+            args: [this.numOpps],
+            callbackScope: this,
+            loop: true, 
         });
 
-        // initialize score
-        this.p1Score = 0;
-          // display score
+        //Score
+        this.score = 0; 
         let scoreConfig = {
-            fontFamily: 'Courier',
-            fontSize: '28px',
-            backgroundColor: '#F3B141',
-            color: '#843605',
+            fontFamily: 'Helvetica',
+            fontSize: '36px',
+            //backgroundColor: 'rgba(255,255,255,0.2)',
+            color: '#FFFF00',
             align: 'right',
             padding: {
             top: 5,
             bottom: 5,
             },
-            fixedWidth: 100
         }
-        this.scoreLeft = this.add.text(borderUISize + borderPadding, borderUISize + borderPadding*2, this.p1Score, scoreConfig);
+        this.scoreText = this.add.text(game.config.width/10, game.config.height/12, this.score, scoreConfig);
 
-        // GAME OVER flag
-        this.gameOver = false;
-        // 60-second play clock
-        scoreConfig.fixedWidth = 0;
-        this.clock = this.time.delayedCall(60000, () => {
+        //Collisions
+        this.physics.add.collider(this.player,this.opps, ()=> {
+            this.sound.play('sfx_hit');
             this.add.text(game.config.width/2, game.config.height/2, 'GAME OVER', scoreConfig).setOrigin(0.5);
-            this.add.text(game.config.width/2, game.config.height/2 + 64, 'Press (R) to Restart or <- for Menu', scoreConfig).setOrigin(0.5);
-            this.gameOver = true;
-        }, null, this);
+            this.add.text(game.config.width/2, game.config.height/1.8, 'Press (R) to Restart or <- for Menu', scoreConfig).setOrigin(0.5);
+            this.sound.play('sfx_over');
+            this.gameover = true;
+        })
 
-        //display time
-        let timeConfig = {
-            fontFamily: 'Courier',
-            fontSize: '28px',
-            backgroundColor: '#F3B141',
-            color: '#843605',
-            align: 'center',
-            padding: {
-                top: 5,
-                bottom: 5,
-            },
-            fixedWidth: 200, 
-        };
-        //innitialize time 
-        this.timeRemaining = 60
-        this.timeLeft = this.add.text(borderUISize + borderPadding + 150, borderUISize + borderPadding * 2,"Time:" +  this.timeRemaining, timeConfig);
-
-        // Call updateTimeDisplay every second
-        this.time.addEvent({
-            delay: 1000, 
-            callback: this.updateTimeDisplay,
-            callbackScope: this,
-            loop: true, 
-        });
-
-         //mouse movement
-         this.input.on('pointermove', (pointer) => {
-            this.p1Rocket.x = pointer.x;
-        });
-
-        this.input.on('pointerdown', () => {
-            if (!this.gameOver) {
-                // Fire the rocket when the mouse is clicked
-                if(!this.p1Rocket.isFiring){
-                    this.p1Rocket.isFiring = true;
-                    this.p1Rocket.sfxRocket.play();  
-                }
-            }
-        });   
-
+        this.oppSpeed = 2;
+        this.wave= 0;
     }
 
     update(){
+        if(this.gameover){
+            this.backgroundMusic.stop();
+            this.opps.getChildren().forEach(opp => { 
+                opp.destroy();
+            });
 
-        // check key input for restart
-        if (this.gameOver && Phaser.Input.Keyboard.JustDown(keyR)) {
-            this.scene.restart();
-        }
+            this.player.body.setAccelerationX(0);
+            this.player.body.setVelocityX(0);
+            // check key input for restart
+            if (this.gameover && Phaser.Input.Keyboard.JustDown(keyR)) {
+                this.scene.restart();
+            }
 
-        if (this.gameOver && Phaser.Input.Keyboard.JustDown(keyLEFT)) {
-            this.scene.start("menuScene");
+            if (this.gameover && this.cursors.left.isDown) {
+                this.scene.start("menuScene");
+            }
+            return;
         }
+        this.field.tilePositionY -= 1.5;
+        Phaser.Actions.IncY(this.opps.getChildren(),this.oppSpeed)
 
-        this.starfield.tilePositionX -= 4;
-        if(!this.gameOver){
-            this.p1Rocket.update();
-            this.ship01.update();               // update spaceships (x3)
-            this.ship02.update();
-            this.ship03.update();
-            this.alien.update();
-        }
-        // check collisions
-        if(this.checkCollision(this.p1Rocket, this.ship03)) {
-            this.addTime();
-            this.p1Rocket.reset();
-            this.shipExplode(this.ship03);
-        }
-        if (this.checkCollision(this.p1Rocket, this.ship02)) {
-            this.addTime();
-            this.p1Rocket.reset();
-            this.shipExplode(this.ship02);
-        }
-        if (this.checkCollision(this.p1Rocket, this.ship01)) {
-            this.addTime();
-            this.p1Rocket.reset();
-            this.shipExplode(this.ship01);
-        }
-         if (this.checkCollisionAlien(this.p1Rocket, this.alien)) {
-            this.addTime();
-            this.p1Rocket.reset();
-            this.alienExplode(this.alien);
-        }
-        
-    }
-
-    addTime(){
-        this.clock.delay += 1000;
-        this.timeLeft.text = "Time:" + this.timeRemaining +"+1";
-    }
-
-    updateTimeDisplay() {
-        // Calculate the time
-        this.timeRemaining = Math.ceil((this.clock.delay - this.clock.getElapsed()) / 1000);
-        // Update the time text
-        this.timeLeft.text = "Time:" +this.timeRemaining;
-    }
-    
-
-    checkCollision(rocket, ship) {
-    
-        if (rocket.x < ship.x + ship.width && 
-          rocket.x + rocket.width > ship.x && 
-          rocket.y < ship.y + ship.height &&
-          rocket.height + rocket.y > ship. y) {
-          return true;
+            // Move player
+        if (this.cursors.left.isDown) {
+            this.player.body.setAccelerationX(-this.player.acceleration);
+            this.player.setFlipX(true);
+        } else if (this.cursors.right.isDown) {
+            this.player.body.setAccelerationX(this.player.acceleration);
+            this.player.setFlipX(false);
         } else {
-          return false;
+            // Apply friction when the player not moving
+            if (this.player.body.velocity.x > 0) {
+                this.player.body.setAccelerationX(-this.player.friction);
+            } else if (this.player.body.velocity.x < 0) {
+                this.player.body.setAccelerationX(this.player.friction);
+            } else {
+                // Stop the player
+                this.player.body.setAccelerationX(0);
+            }
+        }
+
+        // Dont let player speed go over max 
+        if (Math.abs(this.player.body.velocity.x) > this.player.speed) {
+            if(this.player.body.velocity.x >0){
+                this.player.body.velocity.x =  this.player.speed;
+            }else if(this.player.body.velocity.x <0){
+                this.player.body.velocity.x =  -this.player.speed;
+            }
+        }
+
+        this.opps.getChildren().forEach(opp => {
+            if (opp.y >= game.config.height) {
+                opp.destroy();
+                this.score += 1;
+                this.scoreText.text = this.score;
+            }
+        });
+
+    }
+
+    spawnOpps( num ){
+        this.wave += 1;
+        if(this.wave == 6 ||this.wave == 13 || this.wave == 20){
+            this.oppSpeed+=0.5;
+            //console.log(this.oppSpeed);
+        }
+
+        for(let i = 0; i < num; i++){
+            const randomX = Phaser.Math.Between( 104, game.config.width - 104);
+            const randomY = Phaser.Math.Between( -game.config.height/1.7,0);
+            const opp = new Opp(this, randomX,  randomY, 'opp').setOrigin(0.5, 0);
+            this.physics.world.enable(opp);
+            opp.create();
+            if(opp.x < game.config.width/2){
+                opp.setFlipX(true);
+            }
+            this.add.existing(opp);
+            this.opps.add(opp);
+            opp.play('run');
         }
     }
-
-    checkCollisionAlien(rocket, alien) {
-    
-        if (rocket.x < alien.x + alien.width && 
-            rocket.x + rocket.width > alien.x && 
-            rocket.y < alien.y + alien.height &&
-            rocket.height + rocket.y > alien. y) {
-            return true;
-        } else {
-            return false;
-        }
-    }
-
-    shipExplode(ship) {
-        // temporarily hide ship
-        ship.alpha = 0;
-        // create explosion sprite at ship's position
-        let boom = this.add.sprite(ship.x, ship.y, 'explosion').setOrigin(0, 0);
-        boom.anims.play('explode');             // play explode animation
-        boom.on('animationcomplete', () => {    // callback after anim completes
-          ship.reset();                         // reset ship position
-          ship.alpha = 1;                       // make ship visible again
-          boom.destroy();                       // remove explosion sprite
-        });
-        
-        // score add and repaint
-        this.p1Score += ship.points;
-        this.scoreLeft.text = this.p1Score;
-        this.sound.play('sfx_explosion');
-    }
-
-    alienExplode(alien) {
-        // temporarily hide alien
-        alien.alpha = 0;
-        // create explosion sprite at alien's position
-        let boom = this.add.sprite(alien.x, alien.y, 'explosion').setOrigin(0, 0);
-        boom.anims.play('explode');             // play explode animation
-        boom.on('animationcomplete', () => {    // callback after anim completes
-          alien.reset();                         // reset alien position
-          alien.alpha = 1;                       // make alien visible again
-          boom.destroy();                       // remove explosion sprite
-        });
-        
-        // score add and repaint
-        this.p1Score += alien.points;
-        this.scoreLeft.text = this.p1Score;
-        this.sound.play('sfx_explosion');
-    }
-
 }
